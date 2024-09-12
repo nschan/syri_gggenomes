@@ -1,4 +1,4 @@
-Parse Syri
+Parse SyRi into R and plot with gggenomes
 ================
 Niklas Schandry
 
