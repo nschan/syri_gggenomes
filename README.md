@@ -6,7 +6,7 @@ Niklas Schandry
 
 I was looking for a way to plot syri-output, similar to what
 [`plotsr`](https://github.com/schneebergerlab/plotsr/) does, but with
-easier costumization and in R. I could not find anything, so I wrote
+easier customization and in R. I could not find anything, so I wrote
 something.
 
 This requires ‘tidyverse’ (only `dplyr` and `vroom`) and
