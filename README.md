@@ -6,8 +6,9 @@ Niklas Schandry
 
 I was looking for a way to plot syri-output, similar to what
 [`plotsr`](https://github.com/schneebergerlab/plotsr/) does, but with
-easier customization and in R. I could not find anything, so I wrote
-something.
+easier costumization and in R. I could not find anything, so I wrote
+something. The files included here in data for demonstration are the
+plotsr example files.
 
 This requires ‘tidyverse’ (only `dplyr` and `vroom`) and
 [`gggenomes`](https://github.com/thackl/gggenomes). This repo also comes
@@ -235,3 +236,56 @@ gggenomes::gggenomes(seqs = dat$seqs,
 ```
 
 ![](parse_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+
+# Multiple genomes
+
+Comparing two genomes is nice, but more are better.
+
+`parse_syri` can handle multiple outputs in one go:
+
+``` r
+file_list <- list.files("data", full.names = T)
+syri_order <- data.frame(bin_id = c("col", "ler", "cvi", "eri"))
+dat <- parse_syri(file_list, order = syri_order)
+```
+
+    ## Created seqtab
+
+    ## Created links
+
+    ## Calculating polygons
+
+Making a plot from this works the same way of making a plot of only one
+comparison. The order of sequences is set via the `order` argument to
+`parse_syri()`
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links) + 
+  geom_polygon(
+    data = dat$polygons %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polygons %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col - Ler - Cvi - Eri")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->

@@ -21,7 +21,6 @@
 #' `$polygons`: contains polygons that can be plotted via `geom_polygon()`, might be prettier than `links`
 #' 
 #' @export
-
 parse_syri <- \(
   files,
   order,
@@ -201,8 +200,8 @@ compute_polygons_syri <- function(plotdat,
   genomes <- get_genomes(plotdat, genome_order)
   # Compute all polygons
   
-  # parallel::mclapply(1:nrow(plotdat$links), \(row_num) {
-  lapply(1:nrow(plotdat$links), \(row_num) {
+  parallel::mclapply(1:nrow(plotdat$links), \(row_num) {
+  #lapply(1:nrow(plotdat$links), \(row_num) {
     tmpdat = plotdat$links[row_num, ]
     if (tmpdat$end - tmpdat$start > min_feat_size &
         tmpdat$end2 - tmpdat$start2 > min_feat_size) {
