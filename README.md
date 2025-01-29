@@ -6,11 +6,11 @@ Niklas Schandry
 
 I was looking for a way to plot syri-output, similar to what
 [`plotsr`](https://github.com/schneebergerlab/plotsr/) does, but with
-easier costumization and in R. I could not find anything, so I wrote
-something. The files included here in data for demonstration are the
+easier customization and in R. I could not find anything, so I wrote
+something. The files included here in `data/` for demonstration are the
 plotsr example files.
 
-This requires ‘tidyverse’ (only `dplyr` and `vroom`) and
+This requires ‘tidyverse’ (`dplyr`, `magrittr`, and `vroom`) and
 [`gggenomes`](https://github.com/thackl/gggenomes). This repo also comes
 with a snapshot that can be used with `renv::restore()`
 
@@ -40,7 +40,8 @@ In this example, genomeA is col and genomeB is ler.
 
 ``` r
 dat <- parse_syri("data/col_on_ler.syri.out",
-                  order = data.frame(bin_id = c("col","ler")))
+                  order = data.frame(bin_id = c("col","ler"))
+                  )
 ```
 
     ## Created seqtab
@@ -55,7 +56,7 @@ dat <- parse_syri("data/col_on_ler.syri.out",
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type == "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
     aes(
       x = x,
       y = y,
@@ -65,7 +66,118 @@ gggenomes::gggenomes(seqs = dat$seqs,
     alpha = 0.6
   ) +
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type != "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  #geom_link() +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col and Ler")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+# Options
+
+## Selecting chromosomes
+
+Sometimes, only a subset of chromosomes is relevant. `parse_syri()`
+expects chromosome names to be identical across genomes. If that is the
+case, chromosomes can be selected with the `chroms` parameter
+
+``` r
+dat <- parse_syri("data/col_on_ler.syri.out",
+                  order = data.frame(bin_id = c("col","ler")),
+                  chroms = c("Chr1","Chr3")
+                  )
+```
+
+    ## Created seqtab
+
+    ## Created links
+
+    ## Calculating polygons
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links) + 
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  #geom_link() +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col and Ler Chromosomes 1 and 3")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+## Spacing
+
+Sometimes, the default spacing between chromosomes may not be optimal.
+`parse_syri()` follows gggenomes in spacing rules. If spacing is \< 1,
+it is relative to the longest bin / sqrt(number of sequences), if it is
+\>= 1 it is base pairs. The default is 0.05 (as for gggenomes)
+
+### In basepairs
+
+``` r
+dat <- parse_syri("data/col_on_ler.syri.out",
+                  order = data.frame(bin_id = c("col","ler")),
+                  spacing = 5000000 # spacing in bp
+                  )
+```
+
+    ## Created seqtab
+
+    ## Created links
+
+    ## Calculating polygons
+
+Of course, if the spacing was changed, this also needs to be adjusted in
+gggenomes:
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links,
+                     spacing = 5000000) + 
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
     aes(
       x = x,
       y = y,
@@ -77,16 +189,63 @@ gggenomes::gggenomes(seqs = dat$seqs,
   geom_seq(linewidth = 1) + 
   geom_bin_label(size=7) +
   syri_plot_fills  +
-  ggtitle("Synteny between Col and Ler")
+  ggtitle("Synteny between Col - Ler with 5MB spacing between chromsomes")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
 
-# Options
+### Relative
+
+4 times the standard spacing:
+
+``` r
+dat <- parse_syri("data/col_on_ler.syri.out",
+                  order = data.frame(bin_id = c("col","ler")),
+                  spacing = 0.2 # relative spacing
+                  )
+```
+
+    ## Created seqtab
+
+    ## Created links
+
+    ## Calculating polygons
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links,
+                     spacing = 0.2) + 
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col - Ler, spacing increased 4x")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ## No resizing
 
-By default, short syntenic regions larger than 5000bp are resized to
+By default, short syntenic regions larger than 5000 bp are resized to
 make them visible. Since this does not reflect the original input, this
 can be disabled:
 
@@ -106,7 +265,7 @@ dat <- parse_syri("data/col_on_ler.syri.out",
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type == "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
     aes(
       x = x,
       y = y,
@@ -116,7 +275,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
     alpha = 0.6
   ) +
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type != "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
     aes(
       x = x,
       y = y,
@@ -131,7 +290,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler without resizing")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 ## Minimum resize size
 
@@ -157,7 +316,7 @@ Naturally, this will create a busier plot.
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type == "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
     aes(
       x = x,
       y = y,
@@ -167,7 +326,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
     alpha = 0.6
   ) +
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type != "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
     aes(
       x = x,
       y = y,
@@ -182,7 +341,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler, resizing regions larger than 999bp")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ## Resize output size
 
@@ -210,7 +369,7 @@ This will produce wider polygons for resized links.
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type == "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
     aes(
       x = x,
       y = y,
@@ -220,7 +379,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
     alpha = 0.6
   ) +
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type != "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
     aes(
       x = x,
       y = y,
@@ -235,7 +394,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 # Multiple genomes
 
@@ -253,6 +412,14 @@ dat <- parse_syri(file_list, order = syri_order)
 
     ## Created links
 
+    ## Created seqtab
+
+    ## Created links
+
+    ## Created seqtab
+
+    ## Created links
+
     ## Calculating polygons
 
 Making a plot from this works the same way of making a plot of only one
@@ -263,7 +430,7 @@ comparison. The order of sequences is set via the `order` argument to
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type == "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
     aes(
       x = x,
       y = y,
@@ -273,7 +440,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
     alpha = 0.6
   ) +
   geom_polygon(
-    data = dat$polygons %>% filter(direct) %>% filter(type != "SYN"),
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
     aes(
       x = x,
       y = y,
@@ -288,4 +455,4 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler - Cvi - Eri")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
