@@ -9,6 +9,7 @@
 #' @param resize_polygons_size if polygons are resized, to what fraction of the total length? Default `0.003`
 #' @param min_polygon_feat_size minimum length of links to be resized
 #' @param no_polygons do not compute polygons (default: false, will compute polygons)
+#' @param verbose logical, if true returns some extra information for debugging
 #'
 #' @return
 #' a list of dataframes:
@@ -25,19 +26,23 @@ parse_syri <- \(
   resize_polygons = T,
   resize_polygons_size = 0.003,
   min_polygon_feat_size = 5000,
-  no_polygons = FALSE
+  no_polygons = FALSE,
+  verbose = FALSE
 ) {
-  results <- lapply(files, \(file) {
-    
+  # Read sequences and links for all files
+  results <- parallel::mclapply(files, \(file) {
+    # Sequence names come from the filename, split on "_on_"
     seq_names <- file %>%
       stringr::str_remove('.+?(?=[A-Za-z0-9_-]*.syri.out)')  %>%
       stringr::str_remove_all(".syri.out") %>%
       stringr::str_split("_on_", simplify = T)
     
+    # The ref is the sequence after _on_
     ref <- seq_names[[2]]
     qry <- seq_names[[1]]
     #message("Got ref and query names")
     
+    # Read table
     syri_tab <- vroom::vroom(
       file,
       col_names = c(
@@ -55,13 +60,15 @@ parse_syri <- \(
         "copy"
       ),
       show_col_types = FALSE
-    )
+    ) %>%
+      dtplyr::lazy_dt() %>%
+      dplyr::filter(annotation %in% c("SYN", "INV", "TRANS", "DUP")) %>%
+      dplyr::mutate(bin_id = ref, bin_id2 = qry) %>%
+      dplyr::mutate(across(ends_with(c("start", "end")), as.integer)) %>% 
+      as.data.frame()
     
     syri_file <- syri_tab %>%
-      dplyr::filter(annotation %in% c("SYN", "INV", "TRANS", "DUP")) %>%
       dtplyr::lazy_dt() %>%
-      dplyr::mutate(bin_id = ref, bin_id2 = qry) %>%
-      dplyr::mutate(across(ends_with(c("start", "end")), as.integer)) %>%
       group_by(seq_id) %>%
       dplyr::mutate(length = max(ref_start, ref_end, na.rm = T))  %>%
       group_by(seq_id2) %>%
@@ -87,24 +94,13 @@ parse_syri <- \(
         ) %>%
         dplyr::arrange(seq_id) %>%
         distinct(),
-     ) %>%
+    ) %>%
       dplyr::select(bin_id, seq_id, length)
-      
-    message("Created seqtab")
     
-    seq_names <- file %>%
-      stringr::str_remove('.+?(?=[A-Za-z0-9_-]*.syri.out)') %>%
-      stringr::str_remove_all(".syri.out") %>%
-      stringr::str_split("_on_", simplify = T)
-    
-    ref <- seq_names[[2]]
-    qry <- seq_names[[1]]
+    if(verbose) message("Created seqtab")
     
     links <- syri_tab %>%
-      dtplyr::lazy_dt() %>%
-      dplyr::filter(annotation %in% c("SYN", "INV", "TRANS", "DUP")) %>%
-      dplyr::mutate(bin_id = ref, bin_id2 = qry) %>%
-      dplyr::mutate(across(ends_with(c("start", "end")), as.integer)) %>%
+      dtplyr::lazy_dt() %>% 
       dplyr::mutate(
         length = max(ref_start, ref_end, na.rm = T),
         length2 = max(query_start, query_end, na.rm = T),
@@ -131,70 +127,76 @@ parse_syri <- \(
         links %>%
         filter(seq_id %in% chroms, seq_id2 %in% chroms)
     }
-    message("Created links")
+    
+    if(verbose) message("Created links")
     
     pdat <- list(seqs = seqs, links = links)
     
+    if(verbose) message(glue::glue("Finished {file}"))
     return(pdat)
   })
   
+  if(verbose) message("Collecting files")
+  
   out <- list()
+  
+  # Collect sequences
+  
   out$seqs <- lapply(results, \(x) pluck(x,"seqs")) %>% 
     bind_rows() %>%
     arrange(factor(bin_id, levels = order$bin_id), seq_id) %>%
     group_by(bin_id, seq_id) %>% 
     summarize(length = max(length), .groups = "drop") %>% 
     unique()
+  
+  # Collect links
+  
   out$links <- lapply(results, \(x) pluck(x,"links")) %>% 
     bind_rows()
+  
+  # Adjust spacing (only for polygons)
+  
   if(spacing < 1) {
     spacing <- out$seqs %>% 
       group_by(bin_id) %>% 
       summarize(len = sum(length),
                 nseqs = n(),
-                .groups = "drop") %>% {
-      max(.$len)/sqrt(max(.$nseqs))*spacing
-                  
-                }
+                .groups = "drop") %>% 
+      {
+        max(.$len)/sqrt(max(.$nseqs))*spacing
+      }
   }
   if(!no_polygons) {
-    # out$polys <- lapply(results, \(x) pluck(x,"polys")) %>% 
-    #   bind_rows()
-   message("Calculating polygons")
+    if(verbose) message("Calculating polygons")
+    
+    # Pass the combined tables to polygon computation
     out <- compute_polygons_syri_genome(
-        plotdat = out,
-        genome_order = order$bin_id,
-        spacing = spacing,
-        resize_polygons = resize_polygons,
-        resize_size = resize_polygons_size,
-        min_feat_size = min_polygon_feat_size
-      )
+      plotdat = out,
+      genome_order = order$bin_id,
+      spacing = spacing,
+      resize_polygons = resize_polygons,
+      resize_size = resize_polygons_size,
+      min_feat_size = min_polygon_feat_size
+    )
     out$polys <- out$polys %>%
-        mutate(type = fct_relevel(type, "SYN", "DUP", "TRANS", "INV"))
+      mutate(type = fct_relevel(type, "SYN", "DUP", "TRANS", "INV"))
     out$links <- out$links %>%
-        mutate(type = fct_relevel(type, "SYN", "DUP", "TRANS", "INV"))
-    }
+      mutate(type = fct_relevel(type, "SYN", "DUP", "TRANS", "INV"))
+  }
   return(out)
   
 } 
 
+# Helper for compute polygons, produces a list of genomes based on the order. This is to place the sequences correctly along y.
 
-# Helper for compute polygons
 get_genomes <- function(plotdat, genome_order) {
-  genomes_numbers <-
-    c(1:nrow(plotdat$seqs)) %>%
-    as.list()
-  names(genomes_numbers) <- rev(genome_order)
-  genomes_numbers
-}
-
-get_genomes_genome <- function(plotdat, genome_order) {
   genomes_numbers <-
     c(1:length(genome_order)) %>%
     as.list()
   names(genomes_numbers) <- rev(genome_order)
   genomes_numbers
 }
+
 #' Compute polygons
 #' Compute polygons to draw links when plotting with gggenomes
 #' Wraps GENESPACE::calc_curvePolygon.
@@ -202,14 +204,13 @@ get_genomes_genome <- function(plotdat, genome_order) {
 #' @param genome_order a vector containing genomes in the order they should appear in the plot
 #' @param spacing number of basepairs to insert as spacing between sequences
 #' @param resize_polygons bool, should small features be reiszed (to 0.3% of the chromosome length)
-#' @param resize_size number, resize to which size? Default: 0.3% of the chromosome length)
+#' @param resize_size float, resize to which size? Default: 0.003; meaning 0.3% of the chromosome length)
 #' @param min_feat_size mininum size (in bp) of features to be kept / resized, default: 5000
 #'
 #' @return a dataframe containing polygons
 #'
 #' @export
-#'
-#' @examples
+
 compute_polygons_syri_genome <- function(plotdat,
                                          genome_order,
                                          spacing = 10000,
@@ -218,7 +219,7 @@ compute_polygons_syri_genome <- function(plotdat,
                                          min_feat_size = 5000) {
   # Get the order of genomes
   seq_lengths <- plotdat$seqs
-  genomes <- get_genomes_genome(plotdat, genome_order)
+  genomes <- get_genomes(plotdat, genome_order)
   # Compute offsets
   
   # Get links
@@ -234,18 +235,13 @@ compute_polygons_syri_genome <- function(plotdat,
               by = join_by(bin_id2, seq_id2, length2)) %>%
     dplyr::arrange(bin_id, bin_id2, seq_id, seq_id2)
   
-  #print(links)
-  
-
   # In SyRi output, the order is defined by the file. reference is bin_id, qry is bin_id2
-
+  
   seqs <- plotdat$seqs %>%
     arrange(factor(bin_id, levels = genome_order), seq_id) %>%
     unique()
   
-  #print(seqs)
-  
-  # Compute offsets
+  # Compute offsets based on spacing
   offsets1 <- seqs %>%
     dplyr::select(bin_id, seq_id, length1 = length) %>%
     unique() %>%
@@ -269,6 +265,8 @@ compute_polygons_syri_genome <- function(plotdat,
     ) %>%
     ungroup()
   
+  # Here the links table is updated with the shifted positions
+  
   links <- links %>%
     left_join(offsets1, by = join_by(bin_id, seq_id)) %>%
     left_join(offsets2, by = join_by(bin_id2, seq_id2)) %>%
@@ -287,202 +285,46 @@ compute_polygons_syri_genome <- function(plotdat,
     }) %>%
     ungroup()
   
-  # Compute all polygons
+  # Compute all polygons 
+  # This is done for each link.
   
   polys <- parallel::mclapply(1:nrow(plotdat$links), \(row_num) {
     #lapply(1:nrow(links), \(row_num) {
-      #message(glue::glue("Row {row_num}"))
-      tmpdat = links[row_num, ]
-      if (tmpdat$end_shifted - tmpdat$start_shifted > min_feat_size &
-          tmpdat$end2_shifted - tmpdat$start2_shifted > min_feat_size) {
-        mid_x = tmpdat %$% mean(c(
-          start_shifted,
-          start2_shifted,
-          end_shifted,
-          end2_shifted
-        ))
-        mid_y = tmpdat %$% mean(c(genomes[[paste(bin_id)]], genomes[[paste(bin_id2)]]))
-        min_len1 = seq_lengths %>% filter(bin_id == tmpdat$bin_id, seq_id == tmpdat$seq_id) %$% length * resize_size
-        min_len2 = seq_lengths %>% filter(bin_id == tmpdat$bin_id2, seq_id == tmpdat$seq_id2) %$% length * resize_size
-        if (resize_polygons) {
-          # Add 0.5% on either side.
-          if (tmpdat$end_shifted - tmpdat$start_shifted < min_len1) {
-            mid_1 = mean(c(tmpdat$start_shifted, tmpdat$end_shifted))
-            tmpdat$start_shifted = mid_1 - min_len1 / 2
-            tmpdat$end_shifted = mid_1 + min_len1 / 2
-          }
-          if (tmpdat$end2_shifted - tmpdat$start2_shifted < min_len2) {
-            mid_2 = mean(c(tmpdat$start2_shifted, tmpdat$end2_shifted))
-            tmpdat$start2_shifted = mid_2 - min_len2 / 2
-            tmpdat$end2_shifted = mid_2 + min_len2 / 2
-          }
-        }
-        # For inversions
-        if (tmpdat$type == "INV") {
-          polygons <- bind_rows(
-            tmpdat %$%
-              calc_curve_poly(
-                start1 = start_shifted,
-                end1 = end_shifted,
-                start2 = mid_x - 1,
-                end2 = mid_x + 1,
-                y1 = genomes[[paste(bin_id)]],
-                y2 = mid_y - 0.01,
-                npts = 500
-              ) %>%
-              as.data.frame() %>%
-              dplyr::mutate(
-                link = paste(
-                  tmpdat$bin_id,
-                  tmpdat$seq_id,
-                  tmpdat$bin_id2,
-                  tmpdat$seq_id2,
-                  row_num
-                ),
-                link_grp = paste(
-                  tmpdat$bin_id,
-                  tmpdat$seq_id,
-                  tmpdat$bin_id2,
-                  tmpdat$seq_id2,
-                  row_num,
-                  "lower"
-                ),
-                type = "INV"
-              ),
-            tmpdat %$%
-              calc_curve_poly(
-                start1 = mid_x - 1,
-                end1 = mid_x + 1,
-                start2 = start2_shifted,
-                end2 = end2_shifted,
-                y1 = mid_y + 0.01,
-                y2 = genomes[[paste(bin_id2)]],
-                npts = 500
-              ) %>%
-              as.data.frame() %>%
-              dplyr::mutate(
-                link = paste(
-                  tmpdat$bin_id,
-                  tmpdat$seq_id,
-                  tmpdat$bin_id2,
-                  tmpdat$seq_id2,
-                  row_num
-                ),
-                link_grp = paste(
-                  tmpdat$bin_id,
-                  tmpdat$seq_id,
-                  tmpdat$bin_id2,
-                  tmpdat$seq_id2,
-                  row_num,
-                  "upper"
-                ),
-                type = "INV"
-              )
-          )
-        } else {
-          polygons <- tmpdat %$%
-            calc_curve_poly(
-              start1 = start_shifted,
-              end1 = end_shifted,
-              start2 = start2_shifted,
-              end2 = end2_shifted,
-              y1 = genomes[[paste(bin_id)]],
-              y2 = genomes[[paste(bin_id2)]],
-              npts = 1000
-            ) %>%
-            as_tibble() %>%
-            dplyr::mutate(
-              link = paste(
-                tmpdat$bin_id,
-                tmpdat$seq_id,
-                tmpdat$bin_id2,
-                tmpdat$seq_id2,
-                row_num
-              ),
-              link_grp = paste(
-                tmpdat$bin_id,
-                tmpdat$seq_id,
-                tmpdat$bin_id2,
-                tmpdat$seq_id2,
-                row_num
-              ),
-              type = tmpdat$type
-            )
-        }
-      } else {
-        polygons <- NA
-      }
-      return(polygons)
-    }) %>%
-    {
-      .[!is.na(.)]
-    } %>%
-    dplyr::bind_rows() %>%
-    dplyr::group_by(link) %>%
-    dplyr::mutate(direct = case_when(max(y) - min(y)  == 1 ~ TRUE, TRUE ~ FALSE)) %>%
-    dplyr::ungroup()
-  
-  out <- list(seqs = seqs,
-              links = links,
-              polys = polys)
-  return(out)
-}
-
-#' Compute polygons
-#' Compute polygons to draw links when plotting with gggenomes
-#' Wraps GENESPACE::calc_curvePolygon.
-#' @param plotdat list of dfs, named seqs (containing sequences) and links (will be converted to polygons)
-#' @param genome_order a vector containing genomes in the order they should appear in the plot
-#' @param resize_polygons bool, should small features be reiszed (to 0.3% of the chromosome length)
-#' @param resize_size number, resize to which size? Default: 0.3% of the chromosome length)
-#' @param min_feat_size mininum size (in bp) of features to be kept / resized, default: 5000
-#'
-#' @return a dataframe containing polygons
-#'
-#' @export
-#'
-#' @examples
-compute_polygons_syri <- function(plotdat,
-                                  genome_order,
-                                  spacing = 10000,
-                                  resize_polygons = T,
-                                  resize_size = 0.003 ,
-                                  min_feat_size = 5000) {
-  # polygon resizing should make them at least  0.3% of the chromosome length
-  seq_lengths <- plotdat$seqs
-  # Get the order of genomes
-  genomes <- get_genomes(plotdat, genome_order)
-  # Compute all polygons
-  
-  #parallel::mclapply(1:nrow(plotdat$links), \(row_num) {
-  lapply(1:nrow(plotdat$links), \(row_num) {
-    tmpdat = plotdat$links[row_num, ]
-    if (tmpdat$end - tmpdat$start > min_feat_size &
-        tmpdat$end2 - tmpdat$start2 > min_feat_size) {
-      mid_x = tmpdat %$% mean(c(start, start2, end, end2))
+    #message(glue::glue("Row {row_num}"))
+    tmpdat = links[row_num, ]
+    
+    #If the current link is larger than the minimum feature size 
+    if (tmpdat$end_shifted - tmpdat$start_shifted > min_feat_size &
+        tmpdat$end2_shifted - tmpdat$start2_shifted > min_feat_size) {
+      mid_x = tmpdat %$% mean(c(
+        start_shifted,
+        start2_shifted,
+        end_shifted,
+        end2_shifted
+      ))
       mid_y = tmpdat %$% mean(c(genomes[[paste(bin_id)]], genomes[[paste(bin_id2)]]))
-      min_len1 = seq_lengths %>% filter(bin_id == tmpdat$bin_id) %$% length * resize_size
-      min_len2 = seq_lengths %>% filter(bin_id == tmpdat$bin_id2) %$% length * resize_size
+      min_len1 = seq_lengths %>% filter(bin_id == tmpdat$bin_id, seq_id == tmpdat$seq_id) %$% length * resize_size
+      min_len2 = seq_lengths %>% filter(bin_id == tmpdat$bin_id2, seq_id == tmpdat$seq_id2) %$% length * resize_size
       if (resize_polygons) {
         # Add 0.5% on either side.
-        if (tmpdat$end - tmpdat$start < min_len1) {
-          mid_1 = mean(c(tmpdat$start, tmpdat$end))
-          tmpdat$start = mid_1 - min_len1 / 2
-          tmpdat$end = mid_1 + min_len1 / 2
+        if (tmpdat$end_shifted - tmpdat$start_shifted < min_len1) {
+          mid_1 = mean(c(tmpdat$start_shifted, tmpdat$end_shifted))
+          tmpdat$start_shifted = mid_1 - min_len1 / 2
+          tmpdat$end_shifted = mid_1 + min_len1 / 2
         }
-        if (tmpdat$end2 - tmpdat$start2 < min_len2) {
-          mid_2 = mean(c(tmpdat$start2, tmpdat$end2))
-          tmpdat$start2 = mid_2 - min_len2 / 2
-          tmpdat$end2 = mid_2 + min_len2 / 2
+        if (tmpdat$end2_shifted - tmpdat$start2_shifted < min_len2) {
+          mid_2 = mean(c(tmpdat$start2_shifted, tmpdat$end2_shifted))
+          tmpdat$start2_shifted = mid_2 - min_len2 / 2
+          tmpdat$end2_shifted = mid_2 + min_len2 / 2
         }
       }
-      # For inversions
+      # For inversions, the polygon needs to be computed in two halfs, to create the twist effect
       if (tmpdat$type == "INV") {
         polygons <- bind_rows(
           tmpdat %$%
             calc_curve_poly(
-              start1 = start,
-              end1 = end,
+              start1 = start_shifted,
+              end1 = end_shifted,
               start2 = mid_x - 1,
               end2 = mid_x + 1,
               y1 = genomes[[paste(bin_id)]],
@@ -512,8 +354,8 @@ compute_polygons_syri <- function(plotdat,
             calc_curve_poly(
               start1 = mid_x - 1,
               end1 = mid_x + 1,
-              start2 = start2,
-              end2 = end2,
+              start2 = start2_shifted,
+              end2 = end2_shifted,
               y1 = mid_y + 0.01,
               y2 = genomes[[paste(bin_id2)]],
               npts = 500
@@ -541,10 +383,10 @@ compute_polygons_syri <- function(plotdat,
       } else {
         polygons <- tmpdat %$%
           calc_curve_poly(
-            start1 = start,
-            end1 = end,
-            start2 = start2,
-            end2 = end2,
+            start1 = start_shifted,
+            end1 = end_shifted,
+            start2 = start2_shifted,
+            end2 = end2_shifted,
             y1 = genomes[[paste(bin_id)]],
             y2 = genomes[[paste(bin_id2)]],
             npts = 1000
@@ -572,16 +414,25 @@ compute_polygons_syri <- function(plotdat,
       polygons <- NA
     }
     return(polygons)
+    # lapply ends here
   }) %>%
+    # filter out NAs
     {
       .[!is.na(.)]
     } %>%
     dplyr::bind_rows() %>%
     dplyr::group_by(link) %>%
+    # Direct links are those that connect two sequnces that are next to each other.
     dplyr::mutate(direct = case_when(max(y) - min(y)  == 1 ~ TRUE, TRUE ~ FALSE)) %>%
     dplyr::ungroup()
+  # Return tables
+  out <- list(seqs = seqs,
+              links = links,
+              polys = polys)
+  return(out)
 }
 
+# This is GENESPACE::calc_curvePolygon, to not depend on GENESPACE package for this function.
 calc_curve_poly <- function(start1,
                             end1 = NULL,
                             start2,
@@ -590,7 +441,6 @@ calc_curve_poly <- function(start1,
                             y2,
                             npts = 250,
                             keepat = round(npts / 20)) {
-  # This is GENESPACE::calc_curvePolygon, to not depend on GENESPACE package for this single function.
   cos_points <- function(npts, keepat) {
     # initial number of points
     # grid to keep always
@@ -648,7 +498,7 @@ calc_curve_poly <- function(start1,
 }
 
 scale_betwn <- function(x, min, max, scale1toMean = TRUE) {
-  # This is GENESPACE::scale_between, to not depend on GENESPACE package for this single function.
+  # This is GENESPACE::scale_between, to not depend on GENESPACE package for this function.
   if (length(unique(x)) > 1) {
     return((x - min(x)) / (max(x) - min(x)) * (max - min) + min)
   } else{
@@ -660,7 +510,7 @@ scale_betwn <- function(x, min, max, scale1toMean = TRUE) {
   }
 }
 
-# Plot colors
+# Plot colors. These are the colors used by plotsr.
 syri_plot_fills <- scale_fill_manual(
   labels = c(
     "SYN" = "Syntenic",

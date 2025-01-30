@@ -4,15 +4,20 @@ Niklas Schandry
 
 # About
 
-I was looking for a way to plot syri-output, similar to what
-[`plotsr`](https://github.com/schneebergerlab/plotsr/) does, but with
-easier customization and in R. I could not find anything, so I wrote
-something. The files included here in `data/` for demonstration are the
-plotsr example files.
+Here I provide a set of function to read in SyRi-output, and plot it.
+Overall, the results can look similar to what
+[`plotsr`](https://github.com/schneebergerlab/plotsr/) creates. The
+files included here in `data/` for demonstration are the
+[`plotsr`](https://github.com/schneebergerlab/plotsr/) example files.
 
-This requires ‘tidyverse’ (`dplyr`, `magrittr`, and `vroom`) and
-[`gggenomes`](https://github.com/thackl/gggenomes). This repo also comes
-with a snapshot that can be used with `renv::restore()`
+Running this requires ‘tidyverse’ (`dplyr`, `dtplyr`, `magrittr`, and
+`vroom`) and the output is designed to be compatible with
+[`gggenomes`](https://github.com/thackl/gggenomes) for plotting. This
+repo also comes with a snapshot that can be used with `renv::restore()`.
+The calculation of polygons to draw curves between sequences is directly
+lifted from the amazing
+[`GENESPACE`](https://github.com/jtlovell/GENESPACE) package, but
+`GENESPACE` is not a dependency.
 
 ``` r
 renv::install("tidyverse","thackl/gggenomes")
@@ -25,12 +30,11 @@ library(magrittr)
 source("functions/parse_syri.R")
 ```
 
-The calculation of polygons for curves between sequences is directly
-lifted from [`GENESPACE`](https://github.com/jtlovell/GENESPACE)
-
 # Input
 
-The script expects the syri output to be named
+The functions here are intended to work with the outputs from
+[`nf-plotsv`](https://github.com/nschan/nf-plotsv). Therefore, the
+script expects the syri output to be named
 `genomeA_on_genomeB.syri.out`, and will split based on this. There is
 *no* flexibility here.
 
@@ -43,12 +47,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   order = data.frame(bin_id = c("col","ler"))
                   )
 ```
-
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
 
 # Plotting
 
@@ -99,12 +97,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   )
 ```
 
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
-
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
@@ -153,12 +145,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   )
 ```
 
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
-
 Of course, if the spacing was changed, this also needs to be adjusted in
 gggenomes:
 
@@ -205,12 +191,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   )
 ```
 
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
-
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links,
@@ -255,12 +235,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   resize_polygons = F)
 ```
 
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
-
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
@@ -303,12 +277,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   resize_polygons = T,
                   min_polygon_feat_size = 1000)
 ```
-
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
 
 Naturally, this will create a busier plot.
 
@@ -357,12 +325,6 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   resize_polygons_size = 0.01)
 ```
 
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
-
 This will produce wider polygons for resized links.
 
 ``` r
@@ -408,20 +370,6 @@ syri_order <- data.frame(bin_id = c("col", "ler", "cvi", "eri"))
 dat <- parse_syri(file_list, order = syri_order)
 ```
 
-    ## Created seqtab
-
-    ## Created links
-
-    ## Created seqtab
-
-    ## Created links
-
-    ## Created seqtab
-
-    ## Created links
-
-    ## Calculating polygons
-
 Making a plot from this works the same way of making a plot of only one
 comparison. The order of sequences is set via the `order` argument to
 `parse_syri()`
@@ -456,3 +404,8 @@ gggenomes::gggenomes(seqs = dat$seqs,
 ```
 
 ![](parse_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+# Contributing
+
+If you encounter any problems, please open an issue. If you have
+suggestions for improvement, please open a pull request.
