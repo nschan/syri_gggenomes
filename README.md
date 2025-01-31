@@ -6,8 +6,10 @@ Niklas Schandry
 
 Here I provide a set of function to read in SyRi-output, and plot it.
 Overall, the results can look similar to what
-[`plotsr`](https://github.com/schneebergerlab/plotsr/) creates. The
-files included here in `data/` for demonstration are the
+[`plotsr`](https://github.com/schneebergerlab/plotsr/) creates. The SyRi
+outputs from [`nf-plotsv`](https://github.com/nschan/nf-plotsv) can be
+visualized using these functions. The files included in `data/` for
+demonstration are the
 [`plotsr`](https://github.com/schneebergerlab/plotsr/) example files.
 
 Running this requires ‘tidyverse’ (`dplyr`, `dtplyr`, `magrittr`, and
@@ -27,7 +29,7 @@ renv::install("tidyverse","thackl/gggenomes")
 library(tidyverse)
 library(gggenomes)
 library(magrittr)
-source("functions/parse_syri.R")
+source("functions/parse_syri.R") # Contains syri_plot_fills
 ```
 
 # Input
