@@ -46,7 +46,7 @@ After parsing the data, it is ready for plotting with `gggenomes`.
 
 The parsed data can be used with standard `gggenomes` geoms, such as `geom_seq`, `geom_bin`, `geom_link`, etc.
 
-```{r}
+```{r, fig.retina=T, dev='ragg_png', fig.width=12, fig.height=5}
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_seq(linewidth = 1) + 
