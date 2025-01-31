@@ -52,6 +52,34 @@ dat <- parse_syri("data/col_on_ler.syri.out",
 
 # Plotting
 
+After parsing the data, it is ready for plotting with `gggenomes`.
+
+## gggenomes links
+
+The parsed data can be used with standard `gggenomes` geoms, such as
+`geom_seq`, `geom_bin`, `geom_link`, etc.
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links) + 
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  geom_link(aes(fill = type),color = NA) +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col and Ler")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+
+This is probably ok for the comparison of small-ish regions, but not
+extremely appealing for whole genomes.
+
+## With polygons
+
+`gggenomes::geom_link()` currently draws simple rectangles. An
+alternative is to draw links using polygons. These polygons are computed
+during parsing (unless `no_polygons` is set to `TRUE`).
+
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
@@ -82,11 +110,11 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-# Options
+## Options
 
-## Selecting chromosomes
+### Selecting chromosomes
 
 Sometimes, only a subset of chromosomes is relevant. `parse_syri()`
 expects chromosome names to be identical across genomes. If that is the
@@ -129,16 +157,16 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler Chromosomes 1 and 3")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
 
-## Spacing
+### Spacing
 
 Sometimes, the default spacing between chromosomes may not be optimal.
 `parse_syri()` follows gggenomes in spacing rules. If spacing is \< 1,
 it is relative to the longest bin / sqrt(number of sequences), if it is
 \>= 1 it is base pairs. The default is 0.05 (as for gggenomes)
 
-### In basepairs
+#### In basepairs
 
 ``` r
 dat <- parse_syri("data/col_on_ler.syri.out",
@@ -180,9 +208,9 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler with 5MB spacing between chromsomes")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
 
-### Relative
+#### Relative
 
 4 times the standard spacing:
 
@@ -223,9 +251,9 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler, spacing increased 4x")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
 
-## No resizing
+### No resizing
 
 By default, short syntenic regions larger than 5000 bp are resized to
 make them visible. Since this does not reflect the original input, this
@@ -266,9 +294,9 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler without resizing")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
 
-## Minimum resize size
+### Minimum resize size
 
 Only regions larger than `min_polygon_feat_size` are resized (default
 5000), this can be modified to also include smaller regions
@@ -311,9 +339,9 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler, resizing regions larger than 999bp")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
 
-## Resize output size
+### Resize output size
 
 Regions are resized to have a certain length relative to the chromosome,
 controlled by `resize_polygons_size`, which defaults to `0.003` (0.3%)
@@ -358,7 +386,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
 
 # Multiple genomes
 
@@ -405,7 +433,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler - Cvi - Eri")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 # Contributing
 
