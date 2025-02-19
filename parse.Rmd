@@ -388,6 +388,78 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler - Cvi - Eri")
 ```
 
+# Different arrangement of chromosomes
+
+By default, `parse_syri()` takes all chromosomes and puts them on one axis, adding space between them as needed. 
+Sometimes, it might be useful to have the chromosomes each on their own coordinate system instead. This can be done by making use of the `chroms` argument to read each chromosome individually and then combining them. Below is an example for the col-ler-cvi-eri data
+
+```{r}
+file_list <- list.files("data", full.names = T)
+syri_order <- data.frame(bin_id = c("col", "ler", "cvi", "eri"))
+chromosomes <-  c("Chr1", "Chr2", "Chr3", "Chr4", "Chr5")
+dat_tmp <- lapply(chromosomes,
+                  \(chrom) parse_syri(file_list, order = syri_order, chroms = chrom))
+
+# Bind sequences
+dat$seqs <- lapply(1:length(dat), \(l) pluck(dat_tmp, l, "seqs")) %>%
+  bind_rows()
+# Create y coordinates for sequences
+seq_pos <- left_join(dat$seqs, syri_order %>%
+                       mutate(y = rev(1:length(bin_id))))
+# Bind links
+dat$links <- lapply(1:length(dat), \(l) pluck(dat_tmp, l, "links")) %>%
+  bind_rows()
+# Bind polygons
+dat$polys <- lapply(1:length(dat), \(l) pluck(dat_tmp, l, "polys")) %>%
+  bind_rows()
+# Add seq_id column to polygons, only keep polygons that connect the same chromosome
+dat$polys <- dat$polys %>%
+  mutate(
+    Chr_grp1 = str_extract_all(link, "Chr[0-9]*", simplify = T)[, 1],
+    Chr_grp2 = str_extract_all(link, "Chr[0-9]*", simplify = T)[, 2]
+  ) %>%
+  filter(Chr_grp1 == Chr_grp2) %>%
+  mutate(seq_id = Chr_grp1)
+```
+
+This can then be plotted. Note that `geom_segment()` should be used to draw chromosomes, since `geom_seq()` would again place the chromosomes onto a single axis.
+
+```{r chrom_plot, fig.retina=T, dev='png'}
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links) + 
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_segment(aes(x = 0, xend = length, y=y, yend=y), data = seq_pos) +
+  geom_bin_label(size=7, 
+                 # Avoid overly long extension of x to the left
+                 expand_left = 1e-2,
+                 nudge_left = 5e-3) +
+  facet_wrap(~seq_id, ncol = 1,  scales = "free_x") +
+  syri_plot_fills +
+  theme(strip.background = element_rect(fill = "white")) +
+  ggtitle("Synteny between Col - Ler - Cvi - Eri")
+ggsave("parse_files/figure-gfm/chrom_plot-1.png",width = 8, height = 15)
+```
+
+
 # Contributing
 
 If you encounter any problems, please open an issue. If you have suggestions for improvement, please open a pull request.
