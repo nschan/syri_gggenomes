@@ -435,14 +435,17 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 ![](parse_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
-# Different arrangement of chromosomes
+# Keeping chromosomes separate
 
-By default, `parse_syri()` takes all chromosomes and puts them on one
-axis, adding space between them as needed. Sometimes, it might be useful
-to have the chromosomes each on their own coordinate system instead.
-This can be done by making use of the `chroms` argument to read each
-chromosome individually and then combining them. Below is an example for
-the col-ler-cvi-eri data
+By default, `parse_syri()` takes all chromosomes from the same genome
+(`bin_id`) and puts them on one axis, adding space between them as
+needed (See [spacing](#Spacing)).
+
+Sometimes, it might be useful to have the chromosomes each on their own
+coordinate system instead. This can be done by making use of the
+`chroms` argument to read each chromosome individually and then
+combining them. Below is an example for the col-ler-cvi-eri data used
+above and included in `data/`.
 
 ``` r
 file_list <- list.files("data", full.names = T)
@@ -456,12 +459,8 @@ dat$seqs <- lapply(1:length(chromosomes), \(l) pluck(dat_tmp, l, "seqs")) %>%
   bind_rows()
 # Create y coordinates for sequences
 seq_pos <- left_join(dat$seqs, syri_order %>%
-                       mutate(y = rev(1:length(bin_id))))
-```
-
-    ## Joining with `by = join_by(bin_id)`
-
-``` r
+                       mutate(y = rev(1:length(bin_id))),
+                     by = join_by(bin_id))
 # Bind links
 dat$links <- lapply(1:length(chromosomes), \(l) pluck(dat_tmp, l, "links")) %>%
   bind_rows()
@@ -517,10 +516,6 @@ gggenomes::gggenomes(seqs = dat$seqs,
 ```
 
 ![](parse_files/figure-gfm/chrom_plot-1.png)<!-- -->
-
-``` r
-ggsave("parse_files/figure-gfm/chrom_plot-1.png",width = 8, height = 15)
-```
 
 # Contributing
 
