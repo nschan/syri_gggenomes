@@ -452,7 +452,7 @@ dat_tmp <- lapply(chromosomes,
                   \(chrom) parse_syri(file_list, order = syri_order, chroms = chrom))
 
 # Bind sequences
-dat$seqs <- lapply(1:length(dat), \(l) pluck(dat_tmp, l, "seqs")) %>%
+dat$seqs <- lapply(1:length(chromosomes), \(l) pluck(dat_tmp, l, "seqs")) %>%
   bind_rows()
 # Create y coordinates for sequences
 seq_pos <- left_join(dat$seqs, syri_order %>%
@@ -463,10 +463,10 @@ seq_pos <- left_join(dat$seqs, syri_order %>%
 
 ``` r
 # Bind links
-dat$links <- lapply(1:length(dat), \(l) pluck(dat_tmp, l, "links")) %>%
+dat$links <- lapply(1:length(chromosomes), \(l) pluck(dat_tmp, l, "links")) %>%
   bind_rows()
 # Bind polygons
-dat$polys <- lapply(1:length(dat), \(l) pluck(dat_tmp, l, "polys")) %>%
+dat$polys <- lapply(1:length(chromosomes), \(l) pluck(dat_tmp, l, "polys")) %>%
   bind_rows()
 # Add seq_id column to polygons, only keep polygons that connect the same chromosome
 dat$polys <- dat$polys %>%
