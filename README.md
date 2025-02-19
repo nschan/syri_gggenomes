@@ -35,18 +35,25 @@ script expects the SyRi output to be named
 `parse_syri()` has a number of arguments. Most of those are outlined
 below with [examples](#Options):
 
-    files:                    a list of files. These files are expected to: end with `.syri.out` and follow a naming scheme like A_on_B.syri.out
+    files:                    a list of files. These files are expected to: end with `.syri.out` 
+                              and follow the naming scheme A_on_B.syri.out
     order:                    a dataframe with a column bin_id , containing the order of genomes
     chroms:                   (optional) list of chromosomes to retain.
     spacing:                  spacing between chromosomes from the same genome (bin_id). 
-                              This spacing works the same way as the spacing parameter of gggenomes: 
-                              "between sequences in bases (>1) or relative to longest bin (<1)",
-                              which is actually relative to longest bin/sqrt(number of seq_ids).
+                              This spacing works the same way as the spacing parameter of
+                              gggenomes: "between sequences in bases (>1) or relative to 
+                              longest bin (<1)",which is actually relative to 
+                              (longest bin)/sqrt(number of seq_ids).
+                              Default: 0.05
     resize_polygons:          (logical) should polygons of short links be resized?
-    resize_polygons_size:     if polygons are resized, to what fraction of the total length? Default `0.003`
-    min_polygon_feat_size:    minimum length of links to be resized
-    no_polygons:              (logical) do not compute polygons (default: FALSE, will compute polygons)
-    verbose:                  (logical), if TRUE returns some extra information for debugging
+                              Default: TRUE
+    resize_polygons_size:     if polygons are resized, to what fraction of the total length?
+                              Default: 0.003
+    min_polygon_feat_size:    minimum length of links to be resized. Default: 5000
+    no_polygons:              (logical) do not compute polygons. 
+                              Default: FALSE, will compute polygons.
+    verbose:                  (logical), if TRUE returns some extra information for debugging.
+                              Default: FALSE
 
 `parse_syri()` returns a list of data-frames:
 
