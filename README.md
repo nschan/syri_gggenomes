@@ -480,7 +480,7 @@ needed (See [spacing](#Spacing)).
 
 Sometimes, it might be useful to have the chromosomes each on their own
 coordinate system instead. This can be done by making use of the
-[`chroms`](#Selecting%20chromosomes) argument to read each chromosome
+[`chroms`](#Selecting-chromosomes) argument to read each chromosome
 individually and then combining them. Below is an example for the
 col-ler-cvi-eri data used above and included in `data/`.
 

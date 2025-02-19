@@ -431,7 +431,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 By default, `parse_syri()` takes all chromosomes from the same genome (`bin_id`) and puts them on one axis, adding space between them as needed (See [spacing](#Spacing)).
 
-Sometimes, it might be useful to have the chromosomes each on their own coordinate system instead. This can be done by making use of the [`chroms`](#Selecting chromosomes) argument to read each chromosome individually and then combining them. Below is an example for the col-ler-cvi-eri data used above and included in `data/`.
+Sometimes, it might be useful to have the chromosomes each on their own coordinate system instead. This can be done by making use of the [`chroms`](#Selecting-chromosomes) argument to read each chromosome individually and then combining them. Below is an example for the col-ler-cvi-eri data used above and included in `data/`.
 
 ```{r}
 file_list <- list.files("data", full.names = T)
