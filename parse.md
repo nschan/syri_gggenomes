@@ -4,26 +4,72 @@ Niklas Schandry
 
 # About
 
-Here I provide a set of function to read in SyRi-output, and plot it.
-Overall, the results can look similar to what
-[`plotsr`](https://github.com/schneebergerlab/plotsr/) creates. The SyRi
-outputs from [`nf-plotsv`](https://github.com/nschan/nf-plotsv) can be
-visualized using these functions. The files included in `data/` for
-demonstration are the
-[`plotsr`](https://github.com/schneebergerlab/plotsr/) example files.
+Here I provide a function to read in SyRi outputs from
+[`nf-plotsv`](https://github.com/nschan/nf-plotsv) for plotting.
 
 Running this requires ‘tidyverse’ (`dplyr`, `dtplyr`, `magrittr`, and
 `vroom`) and the output is designed to be compatible with
-[`gggenomes`](https://github.com/thackl/gggenomes) for plotting. This
-repo also comes with a snapshot that can be used with `renv::restore()`.
+[`gggenomes`](https://github.com/thackl/gggenomes) for plotting.
+
+This repo also comes with a snapshot that can be used with
+`renv::restore()`.
+
 The calculation of polygons to draw curves between sequences is directly
 lifted from the amazing
 [`GENESPACE`](https://github.com/jtlovell/GENESPACE) package, but
 `GENESPACE` is not a dependency.
 
+The files included in `data/` for demonstration are the
+[`plotsr`](https://github.com/schneebergerlab/plotsr/) example files.
+
+# Input
+
+`parse_syri()` was intended to work with the outputs from
+[`nf-plotsv`](https://github.com/nschan/nf-plotsv). Therefore, the
+script expects the SyRi output to be named
+`genomeA_on_genomeB.syri.out`, and will split based on this. There is
+*no* flexibility here.
+
+# Function reference
+
+`parse_syri()` has a number of arguments. Most of those are outlined
+below with [examples](#Options):
+
+    files:                    a list of files. These files are expected to: end with `.syri.out` and follow a naming scheme like A_on_B.syri.out
+    order:                    a dataframe with a column bin_id , containing the order of genomes
+    chroms:                   (optional) list of chromosomes to retain.
+    spacing:                  spacing between chromosomes from the same genome (bin_id). 
+                              This spacing works the same way as the spacing parameter of gggenomes: 
+                              "between sequences in bases (>1) or relative to longest bin (<1)",
+                              which is actually relative to longest bin/sqrt(number of seq_ids).
+    resize_polygons:          (logical) should polygons of short links be resized?
+    resize_polygons_size:     if polygons are resized, to what fraction of the total length? Default `0.003`
+    min_polygon_feat_size:    minimum length of links to be resized
+    no_polygons:              (logical) do not compute polygons (default: FALSE, will compute polygons)
+    verbose:                  (logical), if TRUE returns some extra information for debugging
+
+`parse_syri()` returns a list of data-frames:
+
+    $seqs:                    contains sequenece information, compatible with gggenomes
+    $links:                   contains links between sequences, compatible with gggenomes
+    $polygons:                contains polygons that can be plotted via `geom_polygon()`
+
+# Running
+
+In this example, `genomeA` is `col` and `genomeB` is `ler.`
+
+The output from SyRi can be parsed using `parse_syri()` (in
+`functions/parse_syri.R`)
+
+If not installed, I recommend to install
+[`gggenomes`](https://github.com/thackl/gggenomes).
+
 ``` r
 renv::install("tidyverse","thackl/gggenomes")
 ```
+
+`parse_syri()` builds on `tidyverse` and uses some special pipes from
+`magrittr`.
 
 ``` r
 library(tidyverse)
@@ -32,17 +78,9 @@ library(magrittr)
 source("functions/parse_syri.R") # Contains syri_plot_fills
 ```
 
-# Input
+## Data in
 
-The functions here are intended to work with the outputs from
-[`nf-plotsv`](https://github.com/nschan/nf-plotsv). Therefore, the
-script expects the syri output to be named
-`genomeA_on_genomeB.syri.out`, and will split based on this. There is
-*no* flexibility here.
-
-# Running
-
-In this example, genomeA is col and genomeB is ler.
+Data is read using `parse_syri()`.
 
 ``` r
 dat <- parse_syri("data/col_on_ler.syri.out",
@@ -50,14 +88,14 @@ dat <- parse_syri("data/col_on_ler.syri.out",
                   )
 ```
 
-# Plotting
+## Plotting
 
-After parsing the data, it is ready for plotting with `gggenomes`.
+After parsing the data, it is ready for plotting.
 
 ## gggenomes links
 
-The parsed data can be used with standard `gggenomes` geoms, such as
-`geom_seq`, `geom_bin`, `geom_link`, etc.
+The parsed data can be used with `gggenomes` geoms, such as `geom_seq`,
+`geom_bin`, `geom_link`, etc.
 
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
@@ -71,14 +109,12 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 ![](parse_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
 
-This is probably ok for the comparison of small-ish regions, but not
-extremely appealing for whole genomes.
-
 ## With polygons
 
 `gggenomes::geom_link()` currently draws simple rectangles. An
-alternative is to draw links using polygons. These polygons are computed
-during parsing (unless `no_polygons` is set to `TRUE`).
+alternative is to draw sequence relationships using polygons. These
+polygons are computed during parsing (unless `no_polygons` is set to
+`TRUE`) and returned in a dataframe in the `$polys` slot of the list.
 
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
@@ -345,8 +381,8 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 Regions are resized to have a certain length relative to the chromosome,
 controlled by `resize_polygons_size`, which defaults to `0.003` (0.3%)
-of the chromosome length. Altering this will make resized regions
-larger, or smaller.
+of the chromosome length. Changing this parameter will make resized
+regions larger or smaller.
 
 ``` r
 dat <- parse_syri("data/col_on_ler.syri.out",
@@ -390,9 +426,10 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 # Multiple genomes
 
-Comparing two genomes is nice, but more are better.
+Comparing two genomes is nice, but more might be better.
 
-`parse_syri` can handle multiple outputs in one go:
+`parse_syri()` can handle multiple inputs in one go when those are
+provided as a list:
 
 ``` r
 file_list <- list.files("data", full.names = T)
@@ -443,9 +480,9 @@ needed (See [spacing](#Spacing)).
 
 Sometimes, it might be useful to have the chromosomes each on their own
 coordinate system instead. This can be done by making use of the
-`chroms` argument to read each chromosome individually and then
-combining them. Below is an example for the col-ler-cvi-eri data used
-above and included in `data/`.
+[`chroms`](#Selecting%20chromosomes) argument to read each chromosome
+individually and then combining them. Below is an example for the
+col-ler-cvi-eri data used above and included in `data/`.
 
 ``` r
 file_list <- list.files("data", full.names = T)
@@ -477,9 +514,8 @@ dat$polys <- dat$polys %>%
   mutate(seq_id = Chr_grp1)
 ```
 
-This can then be plotted. Note that `geom_segment()` should be used to
-draw chromosomes, since `geom_seq()` would again place the chromosomes
-onto a single axis.
+Note that `geom_segment()` should be used to draw chromosomes, since
+`geom_seq()` would again place the chromosomes onto a single axis.
 
 ``` r
 gggenomes::gggenomes(seqs = dat$seqs,
@@ -519,5 +555,6 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 # Contributing
 
-If you encounter any problems, please open an issue. If you have
-suggestions for improvement, please open a pull request.
+If you encounter any problems, please open an issue.
+
+If you have suggestions for improvement, please open a pull request.
