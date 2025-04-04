@@ -155,6 +155,90 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 ![](parse_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
+## Sequence labels
+
+Names of individual sequences can be added using
+e.g. `gggenomes::geom_seq_label()`
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links) + 
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  geom_seq_label(nudge_y = 0.1, hjust = 0, size = 4) +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col and Ler")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- --> In some cases,
+it might be preferred to change some labels, for example to standardize
+them, or to only show some. This can be done by manipulating the table
+in `$seqs`. The easiest is to add a new column that contains new labels,
+modifying `seq_id` directly is probably a bad idea as it can break the
+mapping between sequence names and links. Below, a new `seqlab` column
+is created where only labels for `col` are kept:
+
+``` r
+dat$seqs <- dat$seqs %>%
+  mutate(seqlab = case_when(bin_id != "col" ~ "",
+                            TRUE ~ seq_id)
+         )
+```
+
+This can be used within `gggenomes::geom_seq_label()`:
+
+``` r
+gggenomes::gggenomes(seqs = dat$seqs,
+                     links = dat$links) + 
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type == "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.6
+  ) +
+  geom_polygon(
+    data = dat$polys %>% filter(direct) %>% filter(type != "SYN"),
+    aes(
+      x = x,
+      y = y,
+      fill = type,
+      group = link_grp
+    ),
+    alpha = 0.8
+  ) +
+  geom_seq(linewidth = 1) + 
+  geom_bin_label(size=7) +
+  geom_seq_label(aes(label = seqlab), nudge_y = 0.1, hjust = 0, size = 4) +
+  syri_plot_fills  +
+  ggtitle("Synteny between Col and Ler")
+```
+
+![](parse_files/figure-gfm/unnamed-chunk-8-1.png)<!-- -->
+
 ## Options
 
 ### Selecting chromosomes
@@ -200,7 +284,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler Chromosomes 1 and 3")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-10-1.png)<!-- -->
 
 ### Spacing
 
@@ -251,7 +335,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler with 5MB spacing between chromsomes")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-9-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-12-1.png)<!-- -->
 
 #### Relative
 
@@ -294,7 +378,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler, spacing increased 4x")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-11-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
 
 ### No resizing
 
@@ -337,7 +421,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler without resizing")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
 
 ### Minimum resize size
 
@@ -382,7 +466,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler, resizing regions larger than 999bp")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-15-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
 
 ### Resize output size
 
@@ -429,7 +513,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
 
 # Multiple genomes
 
@@ -477,7 +561,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col - Ler - Cvi - Eri")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+![](parse_files/figure-gfm/unnamed-chunk-22-1.png)<!-- -->
 
 # Keeping chromosomes separate
 
