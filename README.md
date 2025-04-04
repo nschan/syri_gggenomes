@@ -190,13 +190,15 @@ gggenomes::gggenomes(seqs = dat$seqs,
   ggtitle("Synteny between Col and Ler")
 ```
 
-![](parse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- --> In some cases,
-it might be preferred to change some labels, for example to standardize
-them, or to only show some. This can be done by manipulating the table
-in `$seqs`. The easiest is to add a new column that contains new labels,
-modifying `seq_id` directly is probably a bad idea as it can break the
-mapping between sequence names and links. Below, a new `seqlab` column
-is created where only labels for `col` are kept:
+![](parse_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+In some cases, it might be preferred to change some labels, for example
+to standardize them, or to only show some. This can be done by
+manipulating the table in `$seqs`. The easiest is to add a new column
+that contains new labels, modifying `seq_id` directly is probably a bad
+idea as it can break the mapping between sequence names and links.
+Below, a new `seqlab` column is created where only labels for `col` are
+kept:
 
 ``` r
 dat$seqs <- dat$seqs %>%
