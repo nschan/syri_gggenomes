@@ -143,7 +143,7 @@ gggenomes::gggenomes(seqs = dat$seqs,
 
 Names of individual sequences can be added using e.g. `gggenomes::geom_seq_label()`
 
-```{r}
+```{r, fig.retina=T, dev='ragg_png', fig.width=12, fig.height=5}
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
@@ -186,7 +186,7 @@ dat$seqs <- dat$seqs %>%
 
 This can be used within `gggenomes::geom_seq_label()`:
 
-```{r}
+```{r, fig.retina=T, dev='ragg_png', fig.width=12, fig.height=5}
 gggenomes::gggenomes(seqs = dat$seqs,
                      links = dat$links) + 
   geom_polygon(
